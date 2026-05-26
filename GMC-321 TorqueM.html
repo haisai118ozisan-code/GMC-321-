@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電圧波形シミュレーター ／ インバータ比較 ／ パワーエース解説</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    line-height: 1.6;
+    padding: 16px;
+    min-height: 100vh;
+  }
+  @media (min-width: 768px) { body { padding: 32px; } }
+  .container { max-width: 1024px; margin: 0 auto; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    background: #fff;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab:hover { background: #f1f5f9; }
+  .tab.active {
+    background: #0f172a;
+    color: #fff;
+    border-color: #0f172a;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.08);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .sim-header {
+    background: #0f172a;
+    color: #fff;
+    padding: 24px;
+  }
+  .sim-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sim-header .subtitle { color: #94a3b8; font-size: 13px; margin-top: 4px; }
+  .icon { width: 22px; height: 22px; flex-shrink: 0; }
+
+  .control-area {
+    padding: 32px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: center;
+  }
+  .voltage-display {
+    font-size: 36px;
+    font-weight: 900;
+    color: #1e293b;
+    margin-bottom: 8px;
+  }
+  .voltage-display .unit { font-size: 16px; font-weight: 400; color: #64748b; margin-left: 4px; }
+  .slider-wrap { max-width: 480px; margin: 16px auto 0; }
+  .slider-wrap input[type=range] {
+    width: 100%;
+    height: 12px;
+    background: #e2e8f0;
+    border-radius: 8px;
+    appearance: none;
+    cursor: pointer;
+    accent-color: #2563eb;
+  }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 700;
+  }
+  .control-hint {
+    margin-top: 24px;
+    font-size: 13px;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  @media (min-width: 768px) {
+    .compare-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .compare-col { padding: 24px; border-bottom: 1px solid #f1f5f9; }
+  .compare-col.left { border-right: 1px solid #f1f5f9; }
+  .compare-col.right { background: rgba(255, 247, 237, 0.3); }
+
+  .col-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .col-title { font-weight: 700; font-size: 15px; }
+  .col-title.blue { color: #1d4ed8; }
+  .col-title.orange { color: #c2410c; }
+  .col-title.purple { color: #7c3aed; }
+  .col-title.red { color: #dc2626; }
+  .col-title.green { color: #15803d; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .badge.green { color: #16a34a; background: #f0fdf4; }
+  .badge.amber { color: #d97706; background: #fffbeb; }
+  .badge.red { color: #dc2626; background: #fee2e2; animation: pulse 1.2s infinite; }
+  .badge.purple { color: #7c3aed; background: #f3e8ff; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .wave-box {
+    background: #0f172a;
+    border-radius: 8px;
+    padding: 16px;
+    height: 192px;
+    position: relative;
+    overflow: hidden;
+  }
+  .wave-box svg { width: 100%; height: 100%; }
+  .wave-label {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: #64748b;
+  }
+  .wave-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(239, 68, 68, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .wave-overlay span {
+    color: #ef4444;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+  }
+  .compare-desc {
+    margin-top: 16px;
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.7;
+  }
+
+  .explanation-area {
+    padding: 24px;
+    background: #f1f5f9;
+    border-top: 1px solid #e2e8f0;
+  }
+  .explanation-area h4 {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+  }
+  .explanation-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 640px) {
+    .explanation-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .explanation-item {
+    background: #fff;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.7;
+  }
+  .explanation-item .head { font-weight: 700; }
+  .explanation-item .head.blue { color: #1e40af; }
+  .explanation-item .head.orange { color: #9a3412; }
+  .explanation-item .head.purple { color: #6b21a8; }
+
+  /* インバータ専用 */
+  .inv-header {
+    background: linear-gradient(135deg, #581c87, #0f172a);
+    color: #fff;
+    padding: 24px;
+  }
+  .inv-tag {
+    display: inline-block;
+    background: rgba(168, 85, 247, 0.2);
+    color: #d8b4fe;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .inv-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .inv-header h1 .icon { color: #c084fc; }
+  .inv-header p { font-size: 14px; color: #cbd5e1; margin-top: 8px; line-height: 1.7; }
+  .inv-header .accent { color: #d8b4fe; }
+
+  /* 結論カード（インバータが有利） */
+  .conclusion-card {
+    background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+    border: 2px solid #86efac;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .conclusion-card .label {
+    display: inline-block;
+    background: #15803d;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+  }
+  .conclusion-card h2 {
+    font-size: 22px;
+    font-weight: 900;
+    color: #14532d;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  .conclusion-card p {
+    font-size: 14px;
+    color: #166534;
+    line-height: 1.8;
+  }
+  .conclusion-card .highlight {
+    background: #fde68a;
+    padding: 0 4px;
+    font-weight: 700;
+    color: #78350f;
+  }
+
+  /* 訂正告知 */
+  .correction-card {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .correction-card .label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #92400e;
+    letter-spacing: 0.15em;
+    margin-bottom: 6px;
+  }
+  .correction-card p {
+    font-size: 13px;
+    color: #78350f;
+    line-height: 1.7;
+  }
+
+  .reason-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .reason-table th {
+    background: #f8fafc;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 700;
+    color: #334155;
+    font-size: 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .reason-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #475569;
+    vertical-align: top;
+  }
+  .reason-table .label-cell {
+    background: #f8fafc;
+    font-weight: 700;
+    color: #334155;
+    width: 24%;
+  }
+  .reason-table .ng { color: #dc2626; font-weight: 500; }
+  .reason-table .ok { color: #059669; font-weight: 500; }
+  .reason-table .neutral { color: #64748b; }
+
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 768px) { .scenario-grid { grid-template-columns: repeat(3, 1fr); } }
+  .scenario {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    background: #fff;
+  }
+  .scenario.go {
+    border-color: #86efac;
+    background: linear-gradient(135deg, #f0fdf4, #fff);
+  }
+  .scenario.no {
+    border-color: #fca5a5;
+    background: linear-gradient(135deg, #fef2f2, #fff);
+  }
+  .scenario.maybe {
+    border-color: #fcd34d;
+    background: linear-gradient(135deg, #fffbeb, #fff);
+  }
+  .scenario .verdict {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+  }
+  .scenario.go .verdict { color: #16a34a; }
+  .scenario.no .verdict { color: #dc2626; }
+  .scenario.maybe .verdict { color: #d97706; }
+  .scenario h4 {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    font-size: 16px;
+  }
+  .scenario p { font-size: 12px; color: #475569; line-height: 1.7; }
+
+  /* B2OT-450 グラフ専用 */
+  .nt-graph-area {
+    padding: 24px;
+    background: #fff;
+  }
+  .nt-graph-wrap {
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .nt-graph-wrap svg {
+    width: 100%;
+    min-width: 600px;
+    height: auto;
+  }
+  .nt-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+  }
+  .nt-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #475569;
+  }
+  .nt-legend-item .swatch {
+    width: 16px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .data-table-wrap {
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 500px;
+  }
+  .data-table th {
+    background: #1e293b;
+    color: #f1f5f9;
+    padding: 8px 12px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .data-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: center;
+    color: #475569;
+  }
+  .data-table tr:hover { background: #f8fafc; }
+  .data-table .highlight-row { background: #fef3c7; }
+  .data-table .highlight-row:hover { background: #fde68a; }
+  .data-table .highlight-row td { color: #78350f; font-weight: 700; }
+
+  /* パワーエース */
+  .pace-header {
+    background: linear-gradient(135deg, #1e1b4b, #0f172a);
+    color: #fff;
+    padding: 24px;
+  }
+  .pace-tag {
+    display: inline-block;
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .pace-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pace-header h1 .icon { color: #fbbf24; }
+  .pace-header p { font-size: 14px; color: #cbd5e1; margin-top: 8px; line-height: 1.7; }
+  .pace-header .accent { color: #fcd34d; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid #e2e8f0;
+  }
+  .stats > div {
+    padding: 16px;
+    text-align: center;
+    border-right: 1px solid #e2e8f0;
+  }
+  .stats > div:last-child { border-right: none; }
+  .stats .label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+  .stats .value { font-size: 18px; font-weight: 900; color: #1e293b; }
+
+  .section-head {
+    background: #f8fafc;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .section-head h2 {
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+  }
+  .section-head .sub { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+  .vs-grid { display: grid; grid-template-columns: 1fr; }
+  @media (min-width: 768px) { .vs-grid { grid-template-columns: 1fr 1fr; } }
+  .vs-col { padding: 24px; }
+  .vs-col.right { background: rgba(255, 247, 237, 0.3); border-top: 1px solid #f1f5f9; }
+  @media (min-width: 768px) {
+    .vs-col.left { border-right: 1px solid #f1f5f9; }
+    .vs-col.right { border-top: none; }
+  }
+  .vs-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .vs-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.15em;
+  }
+  .vs-tag.blue { color: #1d4ed8; background: #eff6ff; }
+  .vs-tag.amber { color: #b45309; background: #fef3c7; }
+  .vs-list { list-style: none; padding: 0; }
+  .vs-list li {
+    display: flex;
+    gap: 8px;
+    font-size: 13px;
+    color: #475569;
+    margin-bottom: 8px;
+  }
+  .vs-list li .arrow { font-weight: 900; }
+  .vs-list li .arrow.blue { color: #2563eb; }
+  .vs-list li .arrow.amber { color: #d97706; }
+  .vs-note {
+    margin-top: 16px;
+    font-size: 12px;
+    padding: 12px;
+    border-radius: 6px;
+  }
+  .vs-note.blue { color: #1e40af; background: #eff6ff; }
+  .vs-note.amber { color: #92400e; background: #fef3c7; }
+
+  .modes-grid {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  @media (min-width: 768px) { .modes-grid { grid-template-columns: repeat(3, 1fr); } }
+  .mode-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+  .mode-card:hover { border-color: #818cf8; }
+  .mode-card.recommended {
+    border-color: #fbbf24;
+    background: rgba(255, 251, 235, 0.4);
+  }
+  .mode-num {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .mode-num .circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: #e0e7ff;
+    color: #4338ca;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 14px;
+  }
+  .mode-card.recommended .circle { background: #fde68a; color: #92400e; }
+  .mode-num h4 { font-weight: 700; color: #1e293b; font-size: 15px; flex: 1; }
+  .mode-num .rec {
+    font-size: 9px;
+    font-weight: 700;
+    color: #b45309;
+    background: #fde68a;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .mode-type {
+    font-size: 10px;
+    font-weight: 700;
+    color: #4f46e5;
+    letter-spacing: 0.15em;
+    margin-bottom: 8px;
+  }
+  .mode-card.recommended .mode-type { color: #b45309; }
+  .mode-desc { font-size: 12px; color: #475569; line-height: 1.7; }
+  .mode-example {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 10px;
+    color: #64748b;
+  }
+  .mode-card.recommended .mode-example { border-top-color: #fde68a; color: #b45309; }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 768px) { .features-grid { grid-template-columns: 1fr 1fr; } }
+  .feature {
+    padding: 20px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  @media (min-width: 768px) {
+    .feature:nth-child(odd) { border-right: 1px solid #f1f5f9; }
+  }
+  .feature .num {
+    font-size: 10px;
+    font-weight: 700;
+    color: #4f46e5;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+  .feature h4 { font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 15px; }
+  .feature p { font-size: 12px; color: #475569; line-height: 1.7; }
+
+  .spec-table {
+    width: 100%;
+    font-size: 12px;
+    border-collapse: collapse;
+  }
+  .spec-table thead { background: #f1f5f9; }
+  .spec-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 700;
+    color: #334155;
+  }
+  .spec-table td {
+    padding: 12px 16px;
+    border-top: 1px solid #f1f5f9;
+    color: #475569;
+  }
+  .spec-table tbody tr:nth-child(2) { background: rgba(255, 251, 235, 0.3); }
+  .spec-table tbody tr:nth-child(2) td { color: #b45309; font-weight: 500; }
+  .spec-table .first { font-weight: 700; color: #334155 !important; }
+  .spec-table .dash { color: #94a3b8; }
+  .spec-footer {
+    padding: 12px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #f1f5f9;
+    font-size: 10px;
+    color: #64748b;
+    line-height: 1.7;
+  }
+
+  .uses-card {
+    background: linear-gradient(135deg, #eef2ff, #fffbeb);
+    border-radius: 16px;
+    border: 1px solid #c7d2fe;
+    padding: 24px;
+  }
+  .uses-card h3 {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+  }
+  .uses-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  @media (min-width: 768px) { .uses-grid { grid-template-columns: repeat(4, 1fr); } }
+  .use-item {
+    background: #fff;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    font-size: 12px;
+  }
+  .use-item .name {
+    font-weight: 700;
+    color: #4f46e5;
+    margin-bottom: 4px;
+  }
+  .use-item .desc { color: #64748b; }
+
+  .blockdiag-area {
+    padding: 24px;
+    background: #0f172a;
+  }
+  .blockdiag-area svg {
+    width: 100%;
+    height: auto;
+    background: #0f172a;
+  }
+  .blockdiag-grid {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 640px) { .blockdiag-grid { grid-template-columns: repeat(3, 1fr); } }
+  .blockdiag-cell {
+    background: #1e293b;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+  .blockdiag-cell .head {
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+  .blockdiag-cell .head.amber { color: #fbbf24; }
+  .blockdiag-cell .head.indigo { color: #818cf8; }
+  .blockdiag-cell .head.emerald { color: #34d399; }
+  .blockdiag-cell .body { color: #cbd5e1; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" data-tab="compare">電圧波形シミュレーター</button>
+    <button class="tab" data-tab="inverter">インバータ駆動はどうか？</button>
+    <button class="tab" data-tab="powerace">パワーエース解説</button>
+  </div>
+
+  <!-- ===== 電圧波形シミュレーター（既存） ===== -->
+  <div class="panel active" id="compare">
+    <div class="card">
+      <div class="sim-header">
+        <h1>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          電圧調整イメージ・シミュレーター
+        </h1>
+        <p class="subtitle">200V入力時の出力波形変化（スライダック vs サイリスタ）</p>
+      </div>
+
+      <div class="control-area">
+        <div class="voltage-display">
+          <span id="voltOutput">100.0</span><span class="unit">V 出力</span>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="slider" min="5" max="100" value="50">
+          <div class="slider-labels">
+            <span>Min (約10V)</span>
+            <span>100V (50%)</span>
+            <span>Max (200V)</span>
+          </div>
+        </div>
+        <p class="control-hint">
+          <svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          ダイヤルを左右に動かして比較してください
+        </p>
+      </div>
+
+      <div class="compare-grid">
+        <div class="compare-col left">
+          <div class="col-header">
+            <h3 class="col-title blue">スライダック (摺動変圧器)</h3>
+            <span class="badge green">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              常に安定
+            </span>
+          </div>
+          <div class="wave-box">
+            <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+              <line x1="0" y1="50" x2="200" y2="50" stroke="#334155" stroke-width="1"/>
+              <path id="slidacWave" d="" fill="none" stroke="#60a5fa" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <div class="wave-label">きれいな正弦波</div>
+          </div>
+          <p class="compare-desc">
+            電圧を下げても波形の形は崩れません。単に「背の高さ」が低くなるイメージです。そのため、低い電圧でも安定した電気が供給されます。
+          </p>
+        </div>
+
+        <div class="compare-col right">
+          <div class="col-header">
+            <h3 class="col-title orange">サイリスタ式 (位相制御)</h3>
+            <span class="badge amber" id="thyrBadge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span id="thyrBadgeText">低圧時注意</span>
+            </span>
+          </div>
+          <div class="wave-box">
+            <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+              <line x1="0" y1="50" x2="200" y2="50" stroke="#334155" stroke-width="1"/>
+              <path id="thyristorWave" d="" fill="none" stroke="#fb923c" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <div class="wave-overlay" id="unstableOverlay" style="display:none;">
+              <span>ハンチング・ノイズ</span>
+            </div>
+            <div class="wave-label">切り取り波形</div>
+          </div>
+          <p class="compare-desc">
+            電圧を下げるほど、波形の「お尻」の方しか使わなくなります。出力<span id="voltOutput2">100.0</span>V（200Vの約<span id="percentOut">50</span>%）の状態では、スイッチのタイミングが非常にシビアになり、オン・オフが乱れやすくなります。
+          </p>
+        </div>
+      </div>
+
+      <div class="explanation-area">
+        <h4>
+          <svg class="icon" style="width:18px;height:18px;color:#2563eb;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          なぜ100V以下（50%以下）で不安定に見えるのか？
+        </h4>
+        <div class="explanation-grid">
+          <div class="explanation-item">
+            <span class="head blue">● 制御の細かさ（分解能）</span><br>
+            200V機は0〜200Vを制御するように作られています。100V以下で使うということは、常に「能力の半分以下」で微調整を強いている状態です。高級車のアクセルをごく僅かに踏み続けて時速5kmを維持しようとするような、ギクシャクした動きになりやすいのです。
+          </div>
+          <div class="explanation-item">
+            <span class="head orange">● サイリスタの特性</span><br>
+            サイリスタは「一度オンになると、電流がゼロになるまでオフにならない」性質があります。電圧を絞る＝オンにする時間を遅らせる ということですが、あまりに遅くすると、オンになった瞬間にサイクルが終わってしまい、安定して電力を伝えられなくなります。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== インバータ駆動 (改訂版) ===== -->
+  <div class="panel" id="inverter">
+
+    <!-- 訂正告知 -->
+    <div class="correction-card">
+      <div class="label">▼ 訂正・更新（伸興技術部 試験データ T09293 を反映）</div>
+      <p>
+        前回「トルクモーター × インバータ = NG」と説明しましたが、これは<b>不正確</b>でした。<br>
+        伸興技術部の試験データ（B2OT-450 周波数とトルク相関）によれば、<b>低速で大トルクが必要な用途では、インバータ駆動の方が圧倒的に有利</b>です。<br>
+        本ページは試験データに基づき、正しい結論に書き換えています。
+      </p>
+    </div>
+
+    <!-- 結論カード -->
+    <div class="conclusion-card">
+      <span class="label">結論（試験データ T09293 ベース）</span>
+      <h2>低速駆動なら「インバータ + V/f制御」の方が <span style="color:#15803d;">トルクが約4倍 / 電流1/4</span></h2>
+      <p>
+        伸興 B2OT-450 トルクモーター（5N-m / 4P / 60Hz / 220V）の実測データでは：<br>
+        <span class="highlight">サイリスタ式で 60Hz / 110V に絞っても十分なトルクが出ない</span> 領域でも、<br>
+        <span class="highlight">インバータで 30Hz / 110V（V/f比一定）に下げれば、約2.7N-m が安定して取れる</span>。<br>
+        さらに電流値も <b>5A×4=20A → 1/4 程度に削減</b>できる。低速・大トルク用途では合理的な選択肢。
+      </p>
+    </div>
+
+    <!-- ヘッダー -->
+    <div class="card">
+      <div class="inv-header">
+        <span class="inv-tag">VS THYRISTOR vs INVERTER ／ 改訂版</span>
+        <h1>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          インバータで駆動すればどうか？
+        </h1>
+        <p>
+          トルクモーターをインバータで駆動するのは <span class="accent">用途次第で「あり」</span>。<br>
+          一律にNGではなく、<span class="accent">サイリスタ式とインバータでは適材適所が違う</span>のが正解。<br>
+          伸興試験データに基づき、それぞれの特性とどちらを選ぶべきかを整理します。
+        </p>
+      </div>
+    </div>
+
+    <!-- ★ B2OT-450 N-T特性図 -->
+    <div class="card">
+      <div class="section-head">
+        <h2>★ 伸興試験データ：B2OT-450 周波数とトルク相関</h2>
+        <p class="sub">5N-m / 4P / 60Hz / 220V トルクモーター ／ V/f比一定でインバータ駆動した場合のN-T特性</p>
+      </div>
+
+      <div class="nt-graph-area">
+        <div class="nt-graph-wrap">
+          <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg">
+            <!-- グリッド -->
+            <defs>
+              <pattern id="grid" width="50" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 50 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" stroke-width="0.5"/>
+              </pattern>
+            </defs>
+            <rect x="80" y="40" width="650" height="380" fill="url(#grid)"/>
+
+            <!-- 軸 -->
+            <line x1="80" y1="420" x2="730" y2="420" stroke="#1e293b" stroke-width="2"/>
+            <line x1="80" y1="40" x2="80" y2="420" stroke="#1e293b" stroke-width="2"/>
+
+            <!-- Y軸ラベル -->
+            <text x="50" y="50" fill="#475569" font-size="11" text-anchor="end">5.5</text>
+            <text x="50" y="84" fill="#475569" font-size="11" text-anchor="end">5.0</text>
+            <text x="50" y="118" fill="#475569" font-size="11" text-anchor="end">4.5</text>
+            <text x="50" y="152" fill="#475569" font-size="11" text-anchor="end">4.0</text>
+            <text x="50" y="186" fill="#475569" font-size="11" text-anchor="end">3.5</text>
+            <text x="50" y="220" fill="#475569" font-size="11" text-anchor="end">3.0</text>
+            <text x="50" y="254" fill="#475569" font-size="11" text-anchor="end">2.5</text>
+            <text x="50" y="288" fill="#475569" font-size="11" text-anchor="end">2.0</text>
+            <text x="50" y="322" fill="#475569" font-size="11" text-anchor="end">1.5</text>
+            <text x="50" y="356" fill="#475569" font-size="11" text-anchor="end">1.0</text>
+            <text x="50" y="390" fill="#475569" font-size="11" text-anchor="end">0.5</text>
+            <text x="50" y="424" fill="#475569" font-size="11" text-anchor="end">0</text>
+
+            <text x="25" y="230" fill="#1e293b" font-size="13" font-weight="700" transform="rotate(-90, 25, 230)">トルク (N-m)</text>
+
+            <!-- X軸ラベル -->
+            <text x="80" y="438" fill="#475569" font-size="11" text-anchor="middle">0</text>
+            <text x="188" y="438" fill="#475569" font-size="11" text-anchor="middle">300</text>
+            <text x="297" y="438" fill="#475569" font-size="11" text-anchor="middle">600</text>
+            <text x="405" y="438" fill="#475569" font-size="11" text-anchor="middle">900</text>
+            <text x="513" y="438" fill="#475569" font-size="11" text-anchor="middle">1200</text>
+            <text x="622" y="438" fill="#475569" font-size="11" text-anchor="middle">1500</text>
+            <text x="730" y="438" fill="#475569" font-size="11" text-anchor="middle">1800</text>
+            <text x="405" y="465" fill="#1e293b" font-size="13" font-weight="700" text-anchor="middle">速度 (r/min)</text>
+
+            <!-- ===== 最高速度（同期速度）の到達限界線 =====
+                 各周波数の同期速度 X座標：
+                 1800rpm → X=720, 1500rpm → X=622, 1200rpm → X=513,
+                 900rpm → X=405,  600rpm → X=297,  300rpm → X=188
+            -->
+            <!-- 到達不可領域の塗りつぶし（各周波数の右側） -->
+            <!-- 60Hz以外では同期速度以降は存在しない領域 -->
+
+            <!-- 50Hz 到達不可：X=600→730 の帯 -->
+            <rect x="600" y="40" width="130" height="380" fill="#94a3b8" opacity="0.07"/>
+            <!-- 40Hz 到達不可：X=480→730 の帯 -->
+            <rect x="480" y="40" width="120" height="380" fill="#94a3b8" opacity="0.07"/>
+            <!-- 30Hz 到達不可：X=360→730 の帯（最も見やすいので強調） -->
+            <rect x="360" y="40" width="120" height="380" fill="#94a3b8" opacity="0.07"/>
+            <!-- 20Hz 到達不可：X=250→730 -->
+            <rect x="250" y="40" width="110" height="380" fill="#94a3b8" opacity="0.05"/>
+            <!-- 10Hz 到達不可：X=165→730 -->
+            <rect x="165" y="40" width="85" height="380" fill="#94a3b8" opacity="0.04"/>
+
+            <!-- ★ 同期速度の垂直「壁」ライン -->
+            <!-- 50Hz 同期速度：1500rpm → X=622 -->
+            <line x1="600" y1="40" x2="600" y2="420" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.7"/>
+            <text x="601" y="55" fill="#ea580c" font-size="9" opacity="0.9">1500rpm</text>
+
+            <!-- 40Hz 同期速度：1200rpm → X=480 -->
+            <line x1="480" y1="40" x2="480" y2="420" stroke="#ca8a04" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.7"/>
+            <text x="481" y="68" fill="#ca8a04" font-size="9" opacity="0.9">1200rpm</text>
+
+            <!-- 30Hz 同期速度：900rpm → X=360 -->
+            <line x1="360" y1="40" x2="360" y2="420" stroke="#16a34a" stroke-width="2" stroke-dasharray="3 4" opacity="0.8"/>
+            <text x="361" y="55" fill="#16a34a" font-size="10" font-weight="700">900rpm</text>
+            <text x="361" y="67" fill="#16a34a" font-size="9">↑最高速度</text>
+
+            <!-- 20Hz 同期速度：600rpm → X=250 -->
+            <line x1="250" y1="40" x2="250" y2="420" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.7"/>
+            <text x="251" y="55" fill="#0891b2" font-size="9" opacity="0.9">600rpm</text>
+
+            <!-- 10Hz 同期速度：300rpm → X=165 -->
+            <line x1="165" y1="40" x2="165" y2="420" stroke="#7c3aed" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.7"/>
+            <text x="130" y="55" fill="#7c3aed" font-size="9" opacity="0.9">300rpm</text>
+
+            <!-- 「速度の壁」注釈 -->
+            <rect x="83" y="418" width="638" height="2" fill="none"/>
+            <text x="404" y="412" fill="#64748b" font-size="9" text-anchor="middle">↑ 垂直破線が各周波数の最高速度（同期速度）の壁</text>
+
+            <!-- N-T曲線 (各周波数) -->
+            <!-- 60Hz 220V (5N-m → 1800rpm で 0) -->
+            <path d="M 80,80 Q 200,100 400,180 Q 600,260 720,420" fill="none" stroke="#dc2626" stroke-width="3"/>
+            <text x="180" y="115" fill="#dc2626" font-size="12" font-weight="700">60Hz 220V</text>
+
+            <!-- 50Hz 183.3V → 最高速度 1500rpm(X=600)で終わる -->
+            <path d="M 80,108 Q 180,128 350,200 Q 500,280 600,420" fill="none" stroke="#ea580c" stroke-width="3"/>
+            <text x="170" y="158" fill="#ea580c" font-size="12" font-weight="700">50Hz 183.3V</text>
+
+            <!-- 40Hz 146.7V → 最高速度 1200rpm(X=480)で終わる -->
+            <path d="M 80,150 Q 160,170 290,240 Q 420,310 480,420" fill="none" stroke="#ca8a04" stroke-width="3"/>
+            <text x="160" y="200" fill="#ca8a04" font-size="12" font-weight="700">40Hz 146.7V</text>
+
+            <!-- 30Hz 110V → 最高速度 900rpm(X=360)で終わる ★ここが問題 -->
+            <path d="M 80,210 Q 150,230 250,290 Q 330,348 360,420" fill="none" stroke="#16a34a" stroke-width="3.5"/>
+            <text x="140" y="248" fill="#16a34a" font-size="12" font-weight="700">30Hz 110V</text>
+
+            <!-- 20Hz 73.3V → 最高速度 600rpm(X=250)で終わる -->
+            <path d="M 80,278 Q 140,295 200,335 Q 240,375 250,420" fill="none" stroke="#0891b2" stroke-width="3"/>
+            <text x="90" y="305" fill="#0891b2" font-size="12" font-weight="700">20Hz 73.3V</text>
+
+            <!-- 10Hz 36.7V → 最高速度 300rpm(X=165)で終わる -->
+            <path d="M 80,348 Q 120,365 150,390 Q 163,408 165,420" fill="none" stroke="#7c3aed" stroke-width="3"/>
+            <text x="82" y="375" fill="#7c3aed" font-size="11" font-weight="700">10Hz 36.7V</text>
+
+            <!-- ===== ★ サイリスタ駆動の曲線（破線・60Hz固定で電圧のみ可変） ===== -->
+            <!-- 説明：サイリスタは60Hz固定 → 同期速度1800rpm(X=720)で必ずT=0、電圧↓でトルクは電圧²に比例して急減 -->
+            <!-- T_max ∝ V² 関係。220V=5N-m基準 -->
+
+            <!-- サイリスタ 60Hz 165V (75%) - 約2.8N-m -->
+            <path d="M 80,228 Q 250,250 450,300 Q 600,360 720,420" fill="none" stroke="#be185d" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="430" y="294" fill="#be185d" font-size="10" font-weight="700">サイリスタ 60Hz 165V</text>
+
+            <!-- サイリスタ 60Hz 110V (50%) - 約1.25N-m -->
+            <path d="M 80,335 Q 280,348 500,375 Q 620,400 720,420" fill="none" stroke="#be185d" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="450" y="370" fill="#be185d" font-size="10" font-weight="700">サイリスタ 60Hz 110V</text>
+
+            <!-- サイリスタ 60Hz 73.3V (33%) - 約0.55N-m -->
+            <path d="M 80,386 Q 300,393 550,408 Q 650,415 720,420" fill="none" stroke="#be185d" stroke-width="2.5" stroke-dasharray="6 4"/>
+            <text x="450" y="403" fill="#be185d" font-size="9" font-weight="700">サイリスタ 60Hz 73.3V</text>
+
+            <!-- サイリスタ動作領域の網掛け（同期速度近くに集中） -->
+            <rect x="540" y="320" width="180" height="100" fill="#be185d" opacity="0.06"/>
+            <text x="630" y="340" fill="#be185d" font-size="10" font-weight="700" text-anchor="middle">サイリスタ動作域</text>
+            <text x="630" y="355" fill="#be185d" font-size="9" text-anchor="middle">(同期速度≒1800rpm 付近)</text>
+
+            <!-- ★ 比較ハイライト -->
+            <rect x="290" y="354" width="200" height="36" fill="#fef3c7" stroke="#f59e0b" stroke-width="2" rx="4"/>
+            <text x="390" y="370" fill="#92400e" font-size="11" font-weight="700" text-anchor="middle">同じ110V出力でも...</text>
+            <text x="390" y="384" fill="#dc2626" font-size="11" font-weight="900" text-anchor="middle">サイリスタは ≒1.5N-m が限界</text>
+
+            <!-- 矢印（サイリスタ点 → INV点） -->
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#16a34a"/>
+              </marker>
+            </defs>
+            <line x1="320" y1="354" x2="300" y2="245" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow)"/>
+            <text x="200" y="290" fill="#16a34a" font-size="10" font-weight="700">同じ110V でも</text>
+            <text x="200" y="303" fill="#16a34a" font-size="10" font-weight="700">INV なら +1.2N-m UP</text>
+
+            <!-- サイリスタ110V 動作点マーカー -->
+            <circle cx="320" cy="354" r="5" fill="#be185d" stroke="#fff" stroke-width="2"/>
+
+            <!-- インバータ 動作点マーカー (30Hz 110V at ~600rpm, 2.7N-m) -->
+            <circle cx="295" cy="240" r="6" fill="#16a34a" stroke="#fff" stroke-width="2"/>
+            <text x="305" y="225" fill="#16a34a" font-size="11" font-weight="700">INV 30Hz/110V</text>
+            <text x="305" y="238" fill="#16a34a" font-size="10">≒ 2.7N-m / 600rpm</text>
+
+            <!-- タイトル -->
+            <rect x="500" y="60" width="220" height="60" fill="#1e293b" rx="4"/>
+            <text x="610" y="82" fill="#fff" font-size="14" font-weight="700" text-anchor="middle">B2OT-450</text>
+            <text x="610" y="98" fill="#cbd5e1" font-size="10" text-anchor="middle">5N-m Cont 4P 60Hz 220V</text>
+            <text x="610" y="112" fill="#cbd5e1" font-size="10" text-anchor="middle">Torque-Speed Characteristics</text>
+
+            <!-- データソース -->
+            <text x="725" y="455" fill="#94a3b8" font-size="9" text-anchor="end">伸興技術部 NO. T09293</text>
+          </svg>
+        </div>
+
+        <div class="nt-legend">
+          <div style="grid-column: 1 / -1; font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 0.1em; margin-bottom: 4px;">━ インバータ V/f制御（実線）</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:#dc2626;"></span>60Hz 220V (定格)</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:#ea580c;"></span>50Hz 183.3V</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:#ca8a04;"></span>40Hz 146.7V</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:#16a34a;"></span><b>30Hz 110V (★)</b></div>
+          <div class="nt-legend-item"><span class="swatch" style="background:#0891b2;"></span>20Hz 73.3V</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:#7c3aed;"></span>10Hz 36.7V</div>
+          <div style="grid-column: 1 / -1; font-size: 10px; font-weight: 700; color: #be185d; letter-spacing: 0.1em; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0;">┄ サイリスタ式（破線・60Hz 固定で電圧のみ可変）</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:repeating-linear-gradient(90deg, #be185d 0 4px, transparent 4px 7px); height: 3px;"></span>60Hz 165V (75%)</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:repeating-linear-gradient(90deg, #be185d 0 4px, transparent 4px 7px); height: 3px;"></span>60Hz 110V (50%)</div>
+          <div class="nt-legend-item"><span class="swatch" style="background:repeating-linear-gradient(90deg, #be185d 0 4px, transparent 4px 7px); height: 3px;"></span>60Hz 73.3V (33%)</div>
+        </div>
+
+        <!-- トレードオフ表 -->
+        <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div style="background:#f0fdf4;border:2px solid #86efac;border-radius:8px;padding:14px;">
+            <div style="font-size:11px;font-weight:700;color:#166534;letter-spacing:0.1em;margin-bottom:6px;">● 実線：インバータ V/f制御</div>
+            <div style="font-size:12px;color:#166534;line-height:1.7;">
+              ✔ V/f比一定 → <b>トルクは維持</b><br>
+              ✔ 曲線が左へ平行シフト<br>
+              ✗ <b>最高速度も比例して低下</b><br>
+              　30Hzなら最高 <b>900rpm</b> が限界<br>
+              　60Hzの <b>半分の速度</b> しか出ない
+            </div>
+          </div>
+          <div style="background:#fdf2f8;border:2px solid #f9a8d4;border-radius:8px;padding:14px;">
+            <div style="font-size:11px;font-weight:700;color:#9d174d;letter-spacing:0.1em;margin-bottom:6px;">┄ 破線：サイリスタ式</div>
+            <div style="font-size:12px;color:#9d174d;line-height:1.7;">
+              ✔ <b>最高速度は常に1800rpm</b><br>
+              　（60Hz固定のため）<br>
+              ✗ 電圧↓ → <b>トルクは V² で激減</b><br>
+              ✗ 低速域での大トルクは出ない
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;padding:14px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:4px;">
+          <span style="font-size:11px;font-weight:700;color:#92400e;letter-spacing:0.1em;">⚠ インバータ駆動のトレードオフ</span><br>
+          <span style="font-size:13px;color:#78350f;line-height:1.8;">
+            「トルクは出るが、最高速度が周波数に比例して低くなる」のがインバータ V/f制御の本質的な制約。<br>
+            30Hz 駆動なら最高速度は定格の半分の <b>900rpm</b> しか出ない。<br>
+            巻取り機で高速ラインに対応したい場合は、この速度上限が問題になる。<br>
+            <b>→ 用途に必要な最高速度を先に確認し、そこから制御方式を選ぶことが設計の鉄則。</b>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- データ抜粋 -->
+    <div class="card">
+      <div class="section-head">
+        <h2>同じ「110V出力」でも、こんなにトルクが違う</h2>
+        <p class="sub">サイリスタ式 vs インバータ V/f制御 の比較（B2OT-450、低速領域）</p>
+      </div>
+
+      <div style="padding:24px;">
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>駆動方式</th>
+                <th>周波数</th>
+                <th>電圧</th>
+                <th>速度 (r/min)</th>
+                <th>取れるトルク</th>
+                <th>電流目安</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>サイリスタ式</td>
+                <td>60Hz</td>
+                <td>110V</td>
+                <td>~ 1000</td>
+                <td style="color:#dc2626;font-weight:700;">≒ 1.5N-m</td>
+                <td style="color:#dc2626;">≒ 20A</td>
+              </tr>
+              <tr class="highlight-row">
+                <td>★ インバータ V/f</td>
+                <td>30Hz</td>
+                <td>110V</td>
+                <td>~ 600</td>
+                <td>≒ 2.7N-m</td>
+                <td>≒ 5A</td>
+              </tr>
+              <tr>
+                <td>(参考) 定格</td>
+                <td>60Hz</td>
+                <td>220V</td>
+                <td>1800</td>
+                <td>5N-m</td>
+                <td>定格</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:16px;padding:16px;background:#f0fdf4;border-radius:8px;border-left:4px solid #16a34a;">
+          <div style="font-size:11px;font-weight:700;color:#166534;letter-spacing:0.15em;margin-bottom:6px;">この差の意味</div>
+          <p style="font-size:13px;color:#14532d;line-height:1.7;">
+            同じ「110V」でも、<b>周波数も合わせて下げる（V/f制御）</b>と、磁束密度が定格通り保たれるためトルクは維持されます。<br>
+            一方、<b>電圧だけ下げる（サイリスタ式）</b>と、磁束密度が落ちてトルクが急減します。<br>
+            <b>低速で大きなトルクが必要な用途では、インバータV/f制御の優位は決定的</b>です。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 適材適所マトリクス（書き換え） -->
+    <div class="card">
+      <div class="section-head">
+        <h2>サイリスタ式 vs インバータ ／ 用途別の使い分け</h2>
+        <p class="sub">どちらが正解かは「何をしたいか」で決まる</p>
+      </div>
+
+      <table class="reason-table">
+        <thead>
+          <tr>
+            <th style="width:24%;">用途・条件</th>
+            <th>サイリスタ式 (GMC-321 / パワーエース AV)</th>
+            <th>インバータ V/f制御</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="label-cell">耳巻取・連続巻取り（張力一定）</td>
+            <td class="ok">◎ 最適。トルクモーター本来の右下がりN-T特性で巻太り追従</td>
+            <td class="neutral">△ V/f制御では特性が固定的でトルク変動が小さく、巻取りには不向き</td>
+          </tr>
+          <tr>
+            <td class="label-cell">低速・大トルクが必要</td>
+            <td class="ng">✕ 電圧だけ絞ると磁束が落ちトルク激減</td>
+            <td class="ok">◎ V/f比を保てばトルクは維持される</td>
+          </tr>
+          <tr>
+            <td class="label-cell">速度を大きく可変したい</td>
+            <td class="neutral">△ 速度可変幅が狭い（一般に1:3程度）</td>
+            <td class="ok">◎ 1:10以上の広範囲な速度制御が可能</td>
+          </tr>
+          <tr>
+            <td class="label-cell">省エネ・電流削減</td>
+            <td class="ng">✕ 電圧絞っても電流は思ったほど減らない</td>
+            <td class="ok">◎ 試験データでは電流が約1/4に削減</td>
+          </tr>
+          <tr>
+            <td class="label-cell">頻繁な ON/OFF・正逆運転</td>
+            <td class="ok">○ サイリスタの応答性で対応可</td>
+            <td class="ok">○ インバータの加減速制御で対応可</td>
+          </tr>
+          <tr>
+            <td class="label-cell">既存スライダックの置き換え</td>
+            <td class="ok">◎ 同じ手順・配線で置換可能（最も簡単）</td>
+            <td class="neutral">△ 置換可能だが配線・制御見直しが必要</td>
+          </tr>
+          <tr>
+            <td class="label-cell">PLC / 自動化連携</td>
+            <td class="ok">○ パワーエース ASV型なら 0-12V 信号で連携可</td>
+            <td class="ok">◎ アナログ・通信・パルス各種対応で柔軟性高</td>
+          </tr>
+          <tr>
+            <td class="label-cell">設備コスト</td>
+            <td class="ok">○ サイリスタ盤は比較的安価</td>
+            <td class="neutral">△ インバータ本体 + ノイズ対策で総額やや高</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 提案シナリオ -->
+    <div class="card">
+      <div class="section-head">
+        <h2>用途別・推奨される選択肢</h2>
+        <p class="sub">中国地方の Roll to Roll / FA 案件で想定される代表3パターン</p>
+      </div>
+
+      <div style="padding:24px;">
+        <div class="scenario-grid">
+          <div class="scenario go">
+            <div class="verdict">▸ PATTERN A</div>
+            <h4>巻取り・張力制御</h4>
+            <p>
+              <b>→ サイリスタ式（パワーエース AV / ASV）</b><br><br>
+              耳巻取機・自動巻取機など、<span style="color:#16a34a;font-weight:700;">「張力一定で巻太りに追従」</span>が必要な用途。<br>
+              この用途ではトルクモーター本来の特性が活きるため、サイリスタ式が最適。
+            </p>
+          </div>
+
+          <div class="scenario go">
+            <div class="verdict">▸ PATTERN B</div>
+            <h4>低速・大トルク用途</h4>
+            <p>
+              <b>→ インバータ V/f制御</b><br><br>
+              低速回転で大きなトルクが必要な搬送・撹拌・締付・コンベアなど。<br>
+              <span style="color:#16a34a;font-weight:700;">電流も大幅に削減</span>でき、省エネ・経済性で有利。
+            </p>
+          </div>
+
+          <div class="scenario maybe">
+            <div class="verdict">▸ PATTERN C</div>
+            <h4>高精度な張力制御</h4>
+            <p>
+              <b>→ サーボ + ロードセル</b><br><br>
+              超精密な張力制御が必要な薄物フィルム・電線・繊維など。<br>
+              トルクセンサ連携で <span style="color:#d97706;font-weight:700;">μm単位の精度</span>が出せる。
+            </p>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;padding:16px;background:#fef3c7;border-radius:8px;border-left:4px solid #f59e0b;">
+          <div style="font-size:11px;font-weight:700;color:#92400e;letter-spacing:0.15em;margin-bottom:6px;">提案のヒント（中国地方エリア向け）</div>
+          <p style="font-size:13px;color:#78350f;line-height:1.7;">
+            お客様から「インバータで動かしたい」と相談されたら、まず <b>用途を確認</b>してください。<br>
+            ① <b>巻取り用途</b>なら → 「インバータより<b>パワーエース ASV</b>の方が張力制御に強い」と提案<br>
+            ② <b>低速・大トルク用途</b>なら → 「<b>インバータ V/f制御 + B2OTトルクモーター</b>の組合せが伸興試験データで実証済」と提案<br>
+            ③ <b>既存スライダックの更新</b>なら → 用途次第で「サイリスタ式 (GMC-321) または インバータ」を使い分け<br><br>
+            ※ <b>伸興試験データ T09293</b> はB2OTシリーズ専用です。一般のかご形モーターやB2O以外のトルクモーターでは特性が異なる可能性があるため、案件ごとに伸興本社へ確認してください。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- なぜこの差が出るのか -->
+    <div class="card">
+      <div class="section-head">
+        <h2>なぜサイリスタ式とインバータでこんなに差が出るのか</h2>
+        <p class="sub">物理的な理由</p>
+      </div>
+
+      <div style="padding:24px;">
+        <table class="reason-table">
+          <tbody>
+            <tr>
+              <td class="label-cell">磁束密度の維持</td>
+              <td>
+                モーターのトルクは「磁束密度 × 電流」で決まる。<br>
+                <span class="ng">サイリスタ式：</span>電圧だけ下げる → 周波数は60Hz固定 → <b>磁束密度が低下</b> → トルク激減<br>
+                <span class="ok">インバータ V/f制御：</span>電圧と周波数を比例で下げる → 磁束密度は定格を維持 → <b>トルクも維持</b>
+              </td>
+            </tr>
+            <tr>
+              <td class="label-cell">電流の流れ方</td>
+              <td>
+                <span class="ng">サイリスタ式：</span>低電圧で同じ周波数（60Hz）のまま使うと、巻線インピーダンスが変わらず大電流が流れる<br>
+                <span class="ok">インバータ V/f制御：</span>周波数も下がるとインピーダンスも下がり、<b>適切な電流に収まる</b>
+              </td>
+            </tr>
+            <tr>
+              <td class="label-cell">発熱の挙動</td>
+              <td>
+                サイリスタ式で大電流が流れる状態 → 巻線発熱大<br>
+                インバータ V/f制御で適切な電流 → <b>発熱も大幅減</b>。連続運転に向く
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== パワーエース解説（既存） ===== -->
+  <div class="panel" id="powerace">
+    <div class="card">
+      <div class="pace-header">
+        <span class="pace-tag">SHINKO POWER ACE</span>
+        <h1>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/></svg>
+          パワーエース ／ 三相交流ドライブユニット
+        </h1>
+        <p>
+          伸興製トルクモーター専用に開発された半導体制御装置。<br>
+          <span class="accent">トルク制御 ／ 速度制御 ／ 速度-トルク併用制御</span> の3様式に対応する次世代コントローラー。
+        </p>
+      </div>
+      <div class="stats">
+        <div>
+          <div class="label">CONTROL MODE</div>
+          <div class="value">3 種類</div>
+        </div>
+        <div>
+          <div class="label">VOLTAGE</div>
+          <div class="value">200V / 400V</div>
+        </div>
+        <div>
+          <div class="label">CURRENT</div>
+          <div class="value">10〜50A</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <h2>GMC-321（トルパック）との違い</h2>
+        <p class="sub">どちらもサイリスタ式だが、用途と機能が違う</p>
+      </div>
+      <div class="vs-grid">
+        <div class="vs-col left">
+          <div class="vs-head">
+            <h3 class="col-title blue">GMC-321 トルパック</h3>
+            <span class="vs-tag blue">手動制御</span>
+          </div>
+          <ul class="vs-list">
+            <li><span class="arrow blue">▸</span>つまみで電圧を手動調整</li>
+            <li><span class="arrow blue">▸</span>0〜200V 出力 / MAX 13A</li>
+            <li><span class="arrow blue">▸</span>SWT-400N等 完成機に内蔵</li>
+            <li><span class="arrow blue">▸</span>シンプルで小型・低コスト</li>
+          </ul>
+          <div class="vs-note blue">
+            <b>用途：</b>耳巻取機、単独巻取機など、手動でトルクを設定すれば事足りる装置に最適。
+          </div>
+        </div>
+        <div class="vs-col right">
+          <div class="vs-head">
+            <h3 class="col-title orange">パワーエース</h3>
+            <span class="vs-tag amber">自動制御</span>
+          </div>
+          <ul class="vs-list">
+            <li><span class="arrow amber">▸</span>外部電圧信号(0-12V)で自動制御</li>
+            <li><span class="arrow amber">▸</span>200V/400V系・10A〜50A対応</li>
+            <li><span class="arrow amber">▸</span>速度-トルク併用制御が可能</li>
+            <li><span class="arrow amber">▸</span>豊富なオプション盤で拡張可能</li>
+          </ul>
+          <div class="vs-note amber">
+            <b>用途：</b>自動巻取機、ライン連動機、PLC連携が必要な大型装置・自動化ライン全般。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <h2>3 つの制御モード</h2>
+        <p class="sub">用途に応じて型式を選択（AV / ASV）</p>
+      </div>
+      <div class="modes-grid">
+        <div class="mode-card">
+          <div class="mode-num">
+            <div class="circle">1</div>
+            <h4>電圧（トルク）制御</h4>
+          </div>
+          <div class="mode-type">型式：AV-3201〜3405</div>
+          <p class="mode-desc">出力電圧を指令信号で可変。トルクモーターの<b>トルク（張力）</b>をコントロールします。</p>
+          <div class="mode-example">例：張力一定の巻取り</div>
+        </div>
+        <div class="mode-card">
+          <div class="mode-num">
+            <div class="circle">2</div>
+            <h4>速度制御</h4>
+          </div>
+          <div class="mode-type">型式：ASV系</div>
+          <p class="mode-desc">タコゼネ（速度発電機）からのフィードバックで<b>回転数を一定</b>に保ちます。</p>
+          <div class="mode-example">例：搬送ライン定速駆動</div>
+        </div>
+        <div class="mode-card recommended">
+          <div class="mode-num">
+            <div class="circle">3</div>
+            <h4>速度-トルク併用制御</h4>
+            <span class="rec">推奨</span>
+          </div>
+          <div class="mode-type">型式：ASV-3201〜3203</div>
+          <p class="mode-desc">速度とトルクを同時制御。<b>自動巻取機の標準仕様</b>として広く使われます。</p>
+          <div class="mode-example">例：自動巻取り（張力&速度）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <h2>POWER ACE 基本構成（速度-トルク併用制御）</h2>
+      </div>
+      <div class="blockdiag-area">
+        <svg viewBox="0 0 800 280">
+          <rect x="20" y="120" width="80" height="40" fill="#1e293b" stroke="#475569" stroke-width="1.5" rx="4"/>
+          <text x="60" y="140" fill="#94a3b8" font-family="sans-serif" font-size="11" text-anchor="middle">三相電源</text>
+          <text x="60" y="153" fill="#60a5fa" font-family="sans-serif" font-size="10" text-anchor="middle">200/400V</text>
+          <line x1="100" y1="140" x2="160" y2="140" stroke="#475569" stroke-width="2"/>
+          <polygon points="160,140 154,136 154,144" fill="#475569"/>
+          <rect x="160" y="60" width="280" height="160" fill="#312e81" stroke="#fbbf24" stroke-width="2" rx="6"/>
+          <text x="300" y="85" fill="#fbbf24" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle">POWER ACE</text>
+          <rect x="180" y="100" width="80" height="32" fill="#1e1b4b" stroke="#6366f1" stroke-width="1" rx="3"/>
+          <text x="220" y="120" fill="#a5b4fc" font-family="sans-serif" font-size="9" text-anchor="middle">同期・移送</text>
+          <rect x="280" y="100" width="80" height="32" fill="#1e1b4b" stroke="#6366f1" stroke-width="1" rx="3"/>
+          <text x="320" y="120" fill="#a5b4fc" font-family="sans-serif" font-size="9" text-anchor="middle">点弧制御</text>
+          <rect x="180" y="142" width="80" height="32" fill="#1e1b4b" stroke="#6366f1" stroke-width="1" rx="3"/>
+          <text x="220" y="162" fill="#a5b4fc" font-family="sans-serif" font-size="9" text-anchor="middle">電圧比較</text>
+          <rect x="280" y="142" width="80" height="32" fill="#1e1b4b" stroke="#6366f1" stroke-width="1" rx="3"/>
+          <text x="320" y="162" fill="#a5b4fc" font-family="sans-serif" font-size="9" text-anchor="middle">速度比較</text>
+          <rect x="370" y="100" width="60" height="74" fill="#1e1b4b" stroke="#fbbf24" stroke-width="1.5" rx="3"/>
+          <text x="400" y="125" fill="#fbbf24" font-family="sans-serif" font-size="10" text-anchor="middle" font-weight="bold">混合・</text>
+          <text x="400" y="138" fill="#fbbf24" font-family="sans-serif" font-size="10" text-anchor="middle" font-weight="bold">演算</text>
+          <text x="400" y="155" fill="#fbbf24" font-family="sans-serif" font-size="9" text-anchor="middle">サイリスタ</text>
+          <text x="300" y="200" fill="#94a3b8" font-family="sans-serif" font-size="10" text-anchor="middle">外部取出電源 ±15V 100mA</text>
+          <line x1="440" y1="140" x2="500" y2="140" stroke="#fbbf24" stroke-width="2"/>
+          <polygon points="500,140 494,136 494,144" fill="#fbbf24"/>
+          <rect x="500" y="100" width="120" height="80" fill="#1e293b" stroke="#10b981" stroke-width="2" rx="6"/>
+          <text x="560" y="130" fill="#10b981" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle">三相</text>
+          <text x="560" y="148" fill="#10b981" font-family="sans-serif" font-size="13" font-weight="bold" text-anchor="middle">トルクモーター</text>
+          <text x="560" y="165" fill="#94a3b8" font-family="sans-serif" font-size="9" text-anchor="middle">+ タコゼネ</text>
+          <line x1="620" y1="170" x2="680" y2="170" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <line x1="680" y1="170" x2="680" y2="240" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <line x1="680" y1="240" x2="320" y2="240" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <line x1="320" y1="240" x2="320" y2="174" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <polygon points="320,174 316,180 324,180" fill="#10b981"/>
+          <text x="500" y="255" fill="#10b981" font-family="sans-serif" font-size="10" text-anchor="middle">速度フィードバック (S・FB)</text>
+          <text x="220" y="55" fill="#fbbf24" font-family="sans-serif" font-size="11" text-anchor="middle">▼ 電圧指令 0-12V</text>
+          <line x1="220" y1="58" x2="220" y2="100" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <text x="320" y="55" fill="#fbbf24" font-family="sans-serif" font-size="11" text-anchor="middle">▼ 速度指令 0-12V</text>
+          <line x1="320" y1="58" x2="320" y2="100" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="3 2"/>
+        </svg>
+        <div class="blockdiag-grid">
+          <div class="blockdiag-cell">
+            <div class="head amber">入力</div>
+            <div class="body">電圧指令 + 速度指令<br>（0〜12V 信号）</div>
+          </div>
+          <div class="blockdiag-cell">
+            <div class="head indigo">演算</div>
+            <div class="body">指令とフィードバックを<br>比較・演算してサイリスタ点弧</div>
+          </div>
+          <div class="blockdiag-cell">
+            <div class="head emerald">出力</div>
+            <div class="body">トルクモーター駆動<br>速度を常時フィードバック</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <h2>パワーエース 4 つの特長</h2>
+      </div>
+      <div class="features-grid">
+        <div class="feature">
+          <div class="num">FEATURE 01</div>
+          <h4>指令信号と出力が完全比例</h4>
+          <p>入力 0〜12V の指令信号に、出力電圧（トルク）と回転数が完全にリニアで追従。<br>PLC・タッチパネルからの指令でそのまま動かせる。</p>
+        </div>
+        <div class="feature">
+          <div class="num">FEATURE 02</div>
+          <h4>電源と信号が完全分離</h4>
+          <p>制御信号系は主回路から完全アイソレート。<br>他の機器（PLC・センサー・他の制御盤）と信号を併用してもノイズが回り込まない。</p>
+        </div>
+        <div class="feature">
+          <div class="num">FEATURE 03</div>
+          <h4>速度-トルク併用制御を標準装備</h4>
+          <p>自動巻取機などで必須の「張力一定 × 速度追従」制御を、追加機器なしで実現。<br>ASV型を選ぶだけで自動機対応。</p>
+        </div>
+        <div class="feature">
+          <div class="num">FEATURE 04</div>
+          <h4>豊富なオプション盤で拡張</h4>
+          <p>ライン連動・ダンサーロール・テンション制御など、<br>用途別オプション盤と組合せで広範囲な仕様に対応可能。オプション盤用 ±15V 電源も供給。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <h2>パワーエース 標準仕様</h2>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="spec-table">
+          <thead>
+            <tr>
+              <th>電圧系</th>
+              <th>10A</th>
+              <th>20A</th>
+              <th>30A</th>
+              <th>50A</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="first">200V系（AV）</td>
+              <td>AV-3201</td>
+              <td>AV-3202</td>
+              <td>AV-3203</td>
+              <td class="dash">―</td>
+            </tr>
+            <tr>
+              <td class="first">200V系（ASV）</td>
+              <td>ASV-3201</td>
+              <td>ASV-3202</td>
+              <td>ASV-3203</td>
+              <td class="dash">―</td>
+            </tr>
+            <tr>
+              <td class="first">400V系（AV）</td>
+              <td class="dash">―</td>
+              <td class="dash">―</td>
+              <td>AV-3403</td>
+              <td>AV-3405</td>
+            </tr>
+            <tr>
+              <td class="first">素子冷却</td>
+              <td>自冷</td>
+              <td colspan="3">強制通風</td>
+            </tr>
+            <tr>
+              <td class="first">概略質量</td>
+              <td>4 kg</td>
+              <td>8 kg</td>
+              <td>8 kg</td>
+              <td>10 kg</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="spec-footer">
+        ※ 周囲条件：温度 -10〜50℃ / 湿度90%以下 / じん埃が少なく腐食性ガスのない場所<br>
+        ※ 設定信号：DC 0〜12V（入力抵抗 20kΩ）<br>
+        ※ 出力電圧計：60角メーター 200V用 0〜300V / 400V用 0〜500V
+      </div>
+    </div>
+
+    <div class="uses-card">
+      <h3>提案できる主な用途</h3>
+      <div class="uses-grid">
+        <div class="use-item">
+          <div class="name">巻取張力制御</div>
+          <div class="desc">フィルム・電線・繊維</div>
+        </div>
+        <div class="use-item">
+          <div class="name">各種ワインダー</div>
+          <div class="desc">自動巻取機全般</div>
+        </div>
+        <div class="use-item">
+          <div class="name">ライン連動速度</div>
+          <div class="desc">搬送・コンベア</div>
+        </div>
+        <div class="use-item">
+          <div class="name">ライン運行張力</div>
+          <div class="desc">ラミネーター等</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const panels = document.querySelectorAll('.panel');
+  tabs.forEach(t => {
+    t.addEventListener('click', () => {
+      tabs.forEach(x => x.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab).classList.add('active');
+    });
+  });
+
+  const slider = document.getElementById('slider');
+  const voltOut = document.getElementById('voltOutput');
+  const voltOut2 = document.getElementById('voltOutput2');
+  const percentOut = document.getElementById('percentOut');
+  const slidacWave = document.getElementById('slidacWave');
+  const thyristorWave = document.getElementById('thyristorWave');
+  const thyrBadge = document.getElementById('thyrBadge');
+  const thyrBadgeText = document.getElementById('thyrBadgeText');
+  const unstableOverlay = document.getElementById('unstableOverlay');
+
+  let noiseInterval = null;
+  let voltagePercent = 50;
+  const inputVoltage = 200;
+
+  function generateSlidacPath() {
+    let path = "M 0 50 ";
+    const amplitude = (voltagePercent / 100) * 40;
+    for (let x = 0; x <= 200; x++) {
+      const y = 50 - Math.sin((x / 200) * Math.PI * 4) * amplitude;
+      path += `L ${x} ${y.toFixed(2)} `;
+    }
+    return path;
+  }
+
+  function generateThyristorPath(unstable) {
+    let path = "M 0 50 ";
+    const amplitude = 40;
+    const triggerAnglePercent = 100 - voltagePercent;
+
+    for (let x = 0; x <= 200; x++) {
+      const phase = (x % 50) / 50;
+      let y = 50;
+      if (phase * 100 > triggerAnglePercent) {
+        y = 50 - Math.sin((x / 200) * Math.PI * 4) * amplitude;
+      }
+      if (unstable && phase * 100 > triggerAnglePercent) {
+        y += (Math.random() - 0.5) * 5;
+      }
+      path += `L ${x} ${y.toFixed(2)} `;
+    }
+    return path;
+  }
+
+  function update() {
+    voltagePercent = parseInt(slider.value);
+    const currentV = (inputVoltage * voltagePercent / 100).toFixed(1);
+    voltOut.textContent = currentV;
+    voltOut2.textContent = currentV;
+    percentOut.textContent = voltagePercent;
+
+    slidacWave.setAttribute('d', generateSlidacPath());
+
+    const isUnstable = voltagePercent < 25;
+
+    if (isUnstable) {
+      thyrBadge.classList.remove('amber');
+      thyrBadge.classList.add('red');
+      thyrBadgeText.textContent = '不安定・ノイズ大';
+      unstableOverlay.style.display = 'flex';
+      if (!noiseInterval) {
+        noiseInterval = setInterval(() => {
+          thyristorWave.setAttribute('d', generateThyristorPath(true));
+        }, 80);
+      }
+    } else {
+      thyrBadge.classList.remove('red');
+      thyrBadge.classList.add('amber');
+      thyrBadgeText.textContent = '低圧時注意';
+      unstableOverlay.style.display = 'none';
+      if (noiseInterval) {
+        clearInterval(noiseInterval);
+        noiseInterval = null;
+      }
+      thyristorWave.setAttribute('d', generateThyristorPath(false));
+    }
+  }
+
+  slider.addEventListener('input', update);
+  update();
+</script>
+
+</body>
+</html>
